@@ -3,204 +3,129 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Diagnóstico Estratégico de Retiro ISSSTE</title>
+  <title>Diagnóstico Retiro ISSSTE v2.1</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <header class="hero">
   <div>
-    <p class="eyebrow">ISSSTE · Cuenta Individual · v3</p>
-    <h1>Diagnóstico Estratégico de Retiro</h1>
-    <p>Simulador secuencial con subcuentas, acumulación, oferta estimada, IMSS, excedente, inversión e ISR.</p>
+    <p class="eyebrow">ISSSTE · Cuenta Individual</p>
+    <h1>Diagnóstico Retiro ISSSTE</h1>
+    <p>Flujo secuencial: datos → subcuentas → acumulación → escenario de pensión → excedente.</p>
   </div>
 </header>
 
 <main>
   <section class="card">
-    <h2>1. Datos personales, familiares y laborales</h2>
+    <h2>1. Datos personales y laborales</h2>
     <div class="grid">
-      <label>Fecha de nacimiento <input type="date" id="fechaNacimiento"></label>
-      <label>Fecha de ingreso ISSSTE <input type="date" id="fechaIngresoIssste"></label>
-      <label>Fecha objetivo de retiro <input type="date" id="fechaRetiro"></label>
+      <label>Fecha de nacimiento <input type="date" id="nacimiento"></label>
+      <label>Fecha de ingreso ISSSTE <input type="date" id="ingreso"></label>
+      <label>Fecha objetivo de retiro <input type="date" id="retiro"></label>
+      <label>Sueldo básico mensual <input class="moneyInput" inputmode="numeric" id="sueldo" value="25,000"></label>
       <label>Sexo
         <select id="sexo">
           <option value="hombre">Hombre</option>
           <option value="mujer">Mujer</option>
         </select>
       </label>
-      <label>Sueldo básico mensual <input class="money" id="sueldoBasico" value="25,000"></label>
       <label>Ahorro solidario
-        <select id="ahorroSolidarioPct">
+        <select id="solidarioPct">
           <option value="0">0%</option>
           <option value="0.01">1%</option>
           <option value="0.02" selected>2%</option>
         </select>
       </label>
-      <label>Aportación voluntaria mensual <input class="money" id="aportVolMensual" value="0"></label>
-      <label>Pensión garantizada mensual vigente <input class="money" id="pensionGarantizada" value="6,406"></label>
-      <label>Factor aseguradora prudente <input type="number" id="factorAseguradora" value="18.5" step="0.1"></label>
+      <label>Aportación voluntaria mensual <input class="moneyInput" inputmode="numeric" id="voluntariaMensual" value="0"></label>
+      <label>Pensión garantizada mensual vigente <input class="moneyInput" inputmode="numeric" id="pmg" value="6,406"></label>
+      <label>Factor aseguradora conservador <input type="number" id="factorAseg" value="18.5" step="0.1"></label>
     </div>
 
+    <h3>Hijos con posible derecho</h3>
     <div class="grid">
-      <label>¿Tiene cónyuge/concubina(o)?
-        <select id="tieneConyuge">
-          <option value="no">No</option>
-          <option value="si">Sí</option>
-        </select>
-      </label>
-      <label class="conyugeBox hidden">Fecha nacimiento cónyuge <input type="date" id="fechaNacimientoConyuge"></label>
-
-      <label>¿Tiene hijos?
-        <select id="tieneHijos">
-          <option value="no">No</option>
-          <option value="si">Sí</option>
-        </select>
-      </label>
-      <label class="hijosBox hidden">Número de hijos <input type="number" id="numeroHijos" min="1" max="8" value="1"></label>
+      <label>Fecha nacimiento hijo 1 <input type="date" id="hijo1"></label>
+      <label>Fecha nacimiento hijo 2 <input type="date" id="hijo2"></label>
+      <label>Fecha nacimiento hijo 3 <input type="date" id="hijo3"></label>
     </div>
-    <div id="hijosContainer" class="grid hidden"></div>
-    <div id="resumenDatos" class="summary"></div>
+
+    <div class="summary" id="resumenDatos"></div>
   </section>
 
   <section class="card">
-    <h2>2. Subcuentas</h2>
-
+    <h2>2. Subcuentas de la cuenta individual</h2>
     <h3>ISSSTE</h3>
     <div class="grid">
-      <label>ISSSTE 2008 <input class="money subIssste" id="issste2008" value="0"></label>
-      <label>Cesantía ISSSTE <input class="money subIssste" id="cesantiaIssste" value="3,650,000"></label>
-      <label>Cuota Social ISSSTE <input class="money subIssste" id="cuotaSocialIssste" value="0"></label>
-
-      <label>Bono de pensión
-        <select id="tipoBono">
-          <option value="nominal">Valor nominal MXN</option>
-          <option value="udis">Monto en UDIs</option>
-        </select>
-        <input class="money" id="bonoPension" value="0">
-      </label>
-      <label>Valor UDI actual <input type="number" id="valorUdi" value="8.30" step="0.000001"></label>
-      <label>Crecimiento anual UDI / inflación (%) <input type="number" id="crecimientoUdi" value="4" step="0.1"></label>
-
-      <label>SAR ISSSTE <input class="money subIssste" id="sarIssste" value="0"></label>
-      <label>Voluntarias <input class="money subIssste" id="voluntarias" value="0"></label>
-      <label>Complementarias <input class="money subIssste" id="complementarias" value="0"></label>
-      <label>Ahorro a Largo Plazo <input class="money subIssste" id="largoPlazo" value="0"></label>
-      <label>Ahorro Solidario <input class="money subIssste" id="ahorroSolidarioSaldo" value="0"></label>
-      <label>SAR FOVISSSTE 92 <input class="money subIssste" id="sarFovissste92" value="0"></label>
-      <label>FOVISSSTE 2008 <input class="money subIssste" id="fovissste2008" value="0"></label>
+      <label>Bono de pensión <input class="moneyInput subcuenta" id="bono" value="0"></label>
+      <label>RCV ISSSTE <input class="moneyInput subcuenta" id="rcvIssste" value="3,650,000"></label>
+      <label>SAR ISSSTE 92 <input class="moneyInput subcuenta" id="sarIssste92" value="0"></label>
+      <label>SAR FOVISSSTE 92 <input class="moneyInput subcuenta" id="sarFovissste92" value="0"></label>
+      <label>Ahorro solidario <input class="moneyInput subcuenta" id="solidarioSaldo" value="0"></label>
+      <label>Aportaciones voluntarias <input class="moneyInput subcuenta" id="avSaldo" value="0"></label>
+      <label>Complementarias de retiro <input class="moneyInput subcuenta" id="compRetiro" value="0"></label>
+      <label>Ahorro a largo plazo <input class="moneyInput subcuenta" id="largoPlazo" value="0"></label>
+      <label>FOVISSSTE 2008 <input class="moneyInput subcuenta" id="fovissste2008" value="0"></label>
     </div>
 
-    <h3>IMSS condicional</h3>
-    <div class="grid">
-      <label>¿Tiene recursos/cotizaciones IMSS?
-        <select id="tieneImss">
-          <option value="no">No</option>
-          <option value="si">Sí</option>
-        </select>
-      </label>
-      <label class="imssBox hidden">Régimen IMSS
-        <select id="regimenImss">
-          <option value="73">Ley 73</option>
-          <option value="97">Ley 97</option>
-        </select>
-      </label>
-      <label class="imssBox hidden">Escenario IMSS
-        <select id="escenarioImss">
-          <option value="portabilidad">Portabilidad</option>
-          <option value="negativa">Negativa de pensión</option>
-          <option value="pension">Obtener pensión IMSS</option>
-        </select>
-      </label>
-      <label class="imssBox hidden">Semanas cotizadas IMSS <input type="number" id="semanasImss" value="0"></label>
-      <label class="imssBox hidden">Pensión IMSS mensual estimada <input class="money" id="pensionImss" value="0"></label>
+    <label class="check"><input type="checkbox" id="tieneImss"> Tiene recursos/cotizaciones IMSS</label>
+    <div id="bloqueImss" class="hidden">
+      <h3>IMSS / INFONAVIT</h3>
+      <div class="grid">
+        <label>IMSS 1997 <input class="moneyInput subcuentaImss" id="imss97" value="0"></label>
+        <label>Cesantía y vejez IMSS <input class="moneyInput subcuentaImss" id="cyvImss" value="0"></label>
+        <label>Cuota social IMSS <input class="moneyInput subcuentaImss" id="cuotaImss" value="0"></label>
+        <label>INFONAVIT 1997 <input class="moneyInput subcuentaImss" id="infonavit97" value="0"></label>
+        <label>INFONAVIT 2008 <input class="moneyInput subcuentaImss" id="infonavit08" value="0"></label>
+        <label>Semanas cotizadas IMSS <input type="number" id="semanasImss" value="0"></label>
+      </div>
     </div>
 
-    <div id="subcuentasImss" class="grid hidden">
-      <label>IMSS 97 <input class="money subImss" id="imss97" value="0"></label>
-      <label>Cesantía IMSS <input class="money subImss" id="cesantiaImss" value="0"></label>
-      <label>Cuota Social IMSS <input class="money subImss" id="cuotaSocialImss" value="0"></label>
-      <label>SAR IMSS 92 <input class="money subImss" id="sarImss92" value="0"></label>
-      <label>SAR INFONAVIT 92 <input class="money subImss" id="sarInfonavit92" value="0"></label>
-      <label>INFONAVIT 97 <input class="money subImss" id="infonavit97" value="0"></label>
-    </div>
-
-    <div id="resumenSubcuentas" class="summary"></div>
+    <div class="summary" id="resumenSubcuentas"></div>
   </section>
 
   <section class="card">
-    <h2>3. Acumulación proyectada</h2>
+    <h2>3. Proyección de acumulación</h2>
     <div class="grid">
-      <label>Rendimiento anual esperado (%) <input type="number" id="rendimiento" value="8" step="0.1"></label>
-      <label>Inflación anual esperada (%) <input type="number" id="inflacion" value="4" step="0.1"></label>
+      <label>Rendimiento anual esperado <input type="number" id="rendimiento" value="8" step="0.1"></label>
+      <label>Inflación anual esperada <input type="number" id="inflacion" value="4" step="0.1"></label>
     </div>
-    <div class="chartWrap"><canvas id="chartAcumulacion" height="260"></canvas></div>
-    <div id="resumenAcumulacion" class="summary"></div>
+    <div class="chartWrap"><canvas id="graficaAcumulacion" height="260"></canvas></div>
+    <div class="summary" id="resumenAcumulacion"></div>
   </section>
 
   <section class="card">
     <h2>4. Escenario de pensión</h2>
-    <div id="elegibilidad" class="summary"></div>
+    <div id="alertaElegibilidad" class="summary"></div>
 
-    <h3>Documento de oferta estimado</h3>
-    <div id="tablaOferta" class="offerGrid"></div>
+    <h3>A) Documento de oferta estimado</h3>
+    <div class="offerGrid" id="tablaOferta"></div>
 
-    <h3>Retiro programado</h3>
-    <div id="retiroProgramado" class="summary"></div>
+    <h3>B) Poder adquisitivo real</h3>
+    <div class="summary" id="poderAdquisitivo"></div>
 
-    <h3>Simulación por fallecimiento</h3>
-    <div class="grid">
-      <label>Edad de fallecimiento para simular <input type="number" id="edadFallecimiento" value="75"></label>
-    </div>
-    <div id="fallecimiento" class="summary"></div>
+    <h3>C) Retiro programado estimado</h3>
+    <div class="summary" id="retiroProgramado"></div>
+
+    <div id="escenarioImss" class="summary hidden"></div>
   </section>
 
   <section class="card">
     <h2>5. Decisión sobre excedente</h2>
     <div class="grid">
-      <label>Escenario base
-        <select id="escenarioElegido">
-          <option value="75">75% excedente</option>
-          <option value="50">50% excedente</option>
-          <option value="min">1.3× pensión garantizada</option>
-          <option value="max">Renta máxima</option>
+      <label>¿Cuánto quiere retirar ahora? <input class="moneyInput" id="retiroDeseado" value="0"></label>
+      <label>Destino del retiro
+        <select id="destinoRetiro">
+          <option>Sin definir</option>
+          <option>Liquidar deudas</option>
+          <option>Comprar auto</option>
+          <option>Fondo de emergencia</option>
+          <option>Gasto familiar</option>
         </select>
       </label>
-      <label>¿Cuánto quiere retirar ahora? <input class="money" id="retiroDeseado" value="0"></label>
-      <label>Monto que dejará invertido <input class="money" id="invertirDeseado" value="0"></label>
+      <label>Monto que dejará invertido <input class="moneyInput" id="invertirDeseado" value="0"></label>
     </div>
-    <div id="decisionExcedente" class="summary"></div>
-  </section>
-
-  <section class="card">
-    <h2>6. Gestión de inversión e ISR</h2>
-    <div class="grid">
-      <label>Tipo de gestión
-        <select id="tipoGestion">
-          <option value="patrimonio">Aumentar patrimonio</option>
-          <option value="equilibrio">Equilibrio</option>
-          <option value="liquidez">Liquidez</option>
-        </select>
-      </label>
-      <label>Rendimiento anual de inversión (%) <input type="number" id="rendInv" value="8" step="0.1"></label>
-      <label>Inflación anual esperada (%) <input type="number" id="inflacionInv" value="4" step="0.1"></label>
-
-      <label>Exención mensual de pensión <input class="money" id="exencionPension" value="49,000"></label>
-      <label>Límite inferior ISR mensual <input class="money" id="limiteInferior" value="15,487"></label>
-      <label>Cuota fija mensual <input class="money" id="cuotaFija" value="1,641"></label>
-      <label>% sobre excedente <input type="number" id="porcentajeExcedente" value="21.36" step="0.01"></label>
-    </div>
-
-    <h3>Base gravable</h3>
-    <div id="baseFiscal" class="taxGrid"></div>
-
-    <h3>Resultado mensual</h3>
-    <div id="resultadoFiscal" class="taxGrid"></div>
+    <div class="summary" id="decisionExcedente"></div>
   </section>
 </main>
-
-<footer>
-  Herramienta de orientación. No sustituye resolución oficial, documento de oferta, asesoría fiscal ni validación de AFORE/ISSSTE/IMSS.
-</footer>
 
 <script src="script.js"></script>
 </body>
