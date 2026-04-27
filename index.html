@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Diagnóstico Retiro ISSSTE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Diagnóstico Estratégico de Retiro</h1>
+
+<section>
+  <h2>1. Datos del trabajador</h2>
+  <label>Edad:</label>
+  <input type="number" id="edad">
+
+  <label>Sexo:</label>
+  <select id="sexo">
+    <option value="hombre">Hombre</option>
+    <option value="mujer">Mujer</option>
+  </select>
+
+  <label>Saldo total AFORE ($):</label>
+  <input type="number" id="saldo">
+
+  <label>¿Tiene beneficiarios?</label>
+  <select id="beneficiarios">
+    <option value="no">No</option>
+    <option value="si">Sí</option>
+  </select>
+</section>
+
+<section>
+  <h2>2. Proyección</h2>
+  <label>Años al retiro:</label>
+  <input type="number" id="años">
+
+  <label>Rendimiento anual (%):</label>
+  <input type="number" id="rendimiento">
+
+  <button onclick="proyectar()">Calcular Proyección</button>
+
+  <p id="resultadoProyeccion"></p>
+</section>
+
+<section>
+  <h2>3. Escenario de inversión de excedente</h2>
+
+  <label>Inflación (%):</label>
+  <input type="number" id="inflacion">
+
+  <label>ISR estimado (%):</label>
+  <input type="number" id="isr">
+
+  <label>Tipo de retiro:</label>
+  <select id="tipoRetiro">
+    <option value="conservador">Conservador</option>
+    <option value="equilibrio">Equilibrio</option>
+    <option value="agresivo">Agresivo</option>
+  </select>
+
+  <button onclick="calcularRetiro()">Simular Retiro</button>
+
+  <p id="resultadoRetiro"></p>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
