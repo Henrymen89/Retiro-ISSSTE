@@ -1,277 +1,203 @@
-function money(n) {
-  if (!isFinite(n)) return "$0";
-  return n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
-}
+const idsMoney = ["sueldo","voluntariaMensual","pmg","bono","rcvIssste","sarIssste92","sarFovissste92","solidarioSaldo","avSaldo","compRetiro","largoPlazo","fovissste2008","imss97","cyvImss","cuotaImss","infonavit97","infonavit08","retiroDeseado","invertirDeseado"];
 
-function num(id) {
-  return parseFloat(document.getElementById(id).value) || 0;
-}
+function rawNumber(v){ return Number(String(v||"").replace(/[^\d.-]/g,"")) || 0; }
+function getNum(id){ return rawNumber(document.getElementById(id)?.value); }
+function money(n){ return (isFinite(n)?n:0).toLocaleString("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}); }
+function fmtInput(el){ const n=rawNumber(el.value); el.value = n ? n.toLocaleString("es-MX",{maximumFractionDigits:0}) : "0"; }
+function dateVal(id){ const v=document.getElementById(id).value; return v?new Date(v+"T00:00:00"):null; }
+function yearsBetween(a,b){ if(!a||!b) return 0; let y=b.getFullYear()-a.getFullYear(); const m=b.getMonth()-a.getMonth(); if(m<0 || (m===0 && b.getDate()<a.getDate())) y--; return Math.max(0,y); }
 
-function val(id) {
-  return document.getElementById(id).value;
-}
+function suma(ids){ return ids.reduce((t,id)=>t+getNum(id),0); }
 
-function saldoInicial() {
-  return num("saldoRcv") + num("sar92") + num("fovissste") + num("avActual");
-}
-
-function aportacionMensualTotal() {
-  return num("aportObligatoria") + num("aportSolidario") + num("aportComplementaria") + num("aportVoluntaria");
-}
-
-function proyectarSaldo() {
-  const edad = num("edad");
-  const edadRetiro = num("edadRetiro");
-  const anios = Math.max(0, edadRetiro - edad);
-  const meses = anios * 12;
-  const rMensual = Math.pow(1 + num("rendimiento") / 100, 1 / 12) - 1;
-  const inflacionMensual = Math.pow(1 + num("inflacion") / 100, 1 / 12) - 1;
-  let saldo = saldoInicial();
-  let aportacion = aportacionMensualTotal();
-
-  const serie = [{ anio: 0, nominal: saldo, real: saldo }];
-
-  for (let m = 1; m <= meses; m++) {
-    saldo = saldo * (1 + rMensual) + aportacion;
-    if (m % 12 === 0 || m === meses) {
-      const anio = m / 12;
-      const real = saldo / Math.pow(1 + inflacionMensual, m);
-      serie.push({ anio, nominal: saldo, real });
-    }
-  }
-
-  return { saldo, serie, anios };
-}
-
-function factorSeguroSobrevivencia() {
-  const estadoCivil = val("estadoCivil");
-  const hijos = num("hijos");
-  const edad = num("edad");
-  const edadConyuge = num("edadConyuge");
-
-  if (estadoCivil === "sin" && hijos === 0) return { min: 0.00, max: 0.03, texto: "sin beneficiarios relevantes" };
-
-  let min = 0.03, max = 0.08, texto = "beneficiarios de impacto medio";
-  if (estadoCivil === "con" && edadConyuge < edad) {
-    min = 0.08; max = 0.15; texto = "cónyuge menor que el titular";
-  }
-  if (estadoCivil === "con" && hijos > 0) {
-    min = 0.15; max = 0.25; texto = "cónyuge e hijos con derecho";
-  }
-  return { min, max, texto };
-}
-
-function escenarioPension(saldoProyectado) {
-  const edadRetiro = num("edadRetiro");
-  const pmgMensual = num("pmgMensual");
-  const pmgAnual = pmgMensual * 12;
-  const ss = factorSeguroSobrevivencia();
-  const costoPmgBase = pmgAnual * 16; // aproximación inicial editable después con tabla CONSAR
-  const costoPmgMin = costoPmgBase * (1 + ss.min);
-  const costoPmgMax = costoPmgBase * (1 + ss.max);
-  const excedenteMin = Math.max(0, saldoProyectado - costoPmgMax);
-  const excedenteMax = Math.max(0, saldoProyectado - costoPmgMin);
-
-  // Factor actuarial simplificado: años estimados * 12, ajustado por edad.
-  const esperanza = val("sexo") === "mujer" ? 88 : 84;
-  const mesesEsperados = Math.max(120, (esperanza - edadRetiro) * 12);
-  const costoSeguroMin = saldoProyectado * ss.min;
-  const costoSeguroMax = saldoProyectado * ss.max;
-
-  const rvMensualMin = Math.max(0, (saldoProyectado - costoSeguroMax) / mesesEsperados);
-  const rvMensualMax = Math.max(0, (saldoProyectado - costoSeguroMin) / mesesEsperados);
-
-  const rpMensual = saldoProyectado / mesesEsperados;
-
-  let elegibilidad = [];
-  if (edadRetiro < 60) {
-    const umbralRetiroAnticipado = pmgMensual * 1.3;
-    elegibilidad.push(rvMensualMin > umbralRetiroAnticipado ? 
-      ["Retiro anticipado: probable, sujeto a oferta oficial", false] :
-      ["Retiro anticipado: revisar, puede no alcanzar 30% sobre PMG", true]);
-  } else if (edadRetiro >= 60 && edadRetiro < 65) {
-    elegibilidad.push(["Cesantía en edad avanzada", false]);
-  } else {
-    elegibilidad.push(["Vejez", false]);
-  }
-
-  if (num("aniosCotizados") < 25) elegibilidad.push(["Posible negativa o revisión de requisitos", true]);
-  if (val("tieneImss") === "si") elegibilidad.push(["Módulo avanzado: revisar portabilidad IMSS-ISSSTE", false]);
-
-  return {
-    pmgMensual, costoPmgMin, costoPmgMax, excedenteMin, excedenteMax,
-    costoSeguroMin, costoSeguroMax, rvMensualMin, rvMensualMax, rpMensual,
-    elegibilidad, ss
-  };
-}
-
-function calcularRetiroExcedente(excedente) {
-  const r = num("rendimiento") / 100;
-  const i = num("inflacion") / 100;
-  const t = num("isr") / 100;
-  const estrategia = val("estrategia");
-  const edadRetiro = num("edadRetiro");
-  const edadAgotar = num("edadAgotar");
-  let retiroAnual = 0;
-
-  if (estrategia === "conservador") {
-    retiroAnual = excedente * Math.max(0, (r - i) * 0.60) * (1 - t);
-  } else if (estrategia === "equilibrio") {
-    retiroAnual = excedente * Math.max(0, (r - i)) * (1 - t);
-  } else {
-    const anios = Math.max(1, edadAgotar - edadRetiro);
-    const rNetoMensual = Math.pow(1 + (r * (1 - t)), 1/12) - 1;
-    const meses = anios * 12;
-    const pagoMensual = rNetoMensual > 0
-      ? excedente * (rNetoMensual / (1 - Math.pow(1 + rNetoMensual, -meses)))
-      : excedente / meses;
-    retiroAnual = pagoMensual * 12;
-  }
-
-  return {
-    retiroAnual,
-    retiroMensual: retiroAnual / 12,
-    isrAnual: excedente * r * t,
-    rendimientoBruto: excedente * r,
-    rendimientoReal: excedente * Math.max(0, r - i)
-  };
-}
-
-function serieExcedente(excedente, retiroMensual) {
-  const rMensual = Math.pow(1 + num("rendimiento") / 100, 1 / 12) - 1;
-  const t = num("isr") / 100;
-  const edadRetiro = num("edadRetiro");
-  const edadAgotar = num("edadAgotar");
-  const meses = Math.max(12, (edadAgotar - edadRetiro) * 12);
-  let saldo = excedente;
-  const serie = [{ anio: 0, saldo }];
-
-  for (let m = 1; m <= meses; m++) {
-    const rendimiento = saldo * rMensual;
-    const impuesto = rendimiento * t;
-    saldo = Math.max(0, saldo + rendimiento - impuesto - retiroMensual);
-    if (m % 12 === 0 || saldo <= 0) {
-      serie.push({ anio: m / 12, saldo });
-    }
-    if (saldo <= 0) break;
-  }
-  return serie;
-}
-
-function drawLineChart(canvasId, series, keys, labels) {
-  const canvas = document.getElementById(canvasId);
-  const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = 220 * dpr;
-  ctx.scale(dpr, dpr);
-
-  const w = rect.width, h = 220;
-  ctx.clearRect(0, 0, w, h);
-
-  const pad = 34;
-  const maxY = Math.max(...series.flatMap(p => keys.map(k => p[k] || 0)), 1);
-  const maxX = Math.max(...series.map(p => p.anio), 1);
-
-  ctx.strokeStyle = "#334155";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(pad, pad);
-  ctx.lineTo(pad, h - pad);
-  ctx.lineTo(w - pad, h - pad);
-  ctx.stroke();
-
-  keys.forEach((key, idx) => {
-    ctx.beginPath();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = idx === 0 ? "#22c55e" : "#38bdf8";
-    series.forEach((p, i) => {
-      const x = pad + (p.anio / maxX) * (w - pad * 2);
-      const y = h - pad - ((p[key] || 0) / maxY) * (h - pad * 2);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.fillText(labels[idx], pad + 10, pad + 16 + idx * 16);
+function hijosConDerecho(fechaRetiro){
+  let count=0;
+  ["hijo1","hijo2","hijo3"].forEach(id=>{
+    const f=dateVal(id);
+    if(f && yearsBetween(f,fechaRetiro)<25) count++;
   });
-
-  ctx.fillStyle = "#9ca3af";
-  ctx.font = "12px Arial";
-  ctx.fillText("Años", w - pad - 28, h - 10);
-  ctx.fillText(money(maxY), pad, 18);
+  return count;
 }
 
-function calcularTodo() {
-  const proy = proyectarSaldo();
-  const pension = escenarioPension(proy.saldo);
+function datosBase(){
+  const nac=dateVal("nacimiento"), ing=dateVal("ingreso"), ret=dateVal("retiro");
+  const edadRet=yearsBetween(nac,ret);
+  const servicio=yearsBetween(ing,ret);
+  const hijos=hijosConDerecho(ret);
+  return {nac,ing,ret,edadRet,servicio,hijos};
+}
 
-  document.getElementById("resultadoProyeccion").innerHTML = `
-    <b>Saldo inicial:</b> ${money(saldoInicial())}<br>
-    <b>Aportación mensual total:</b> ${money(aportacionMensualTotal())}<br>
-    <b>Saldo nominal proyectado:</b> ${money(proy.saldo)}<br>
-    <b>Saldo real estimado:</b> ${money(proy.serie[proy.serie.length - 1].real)}<br>
-    <b>Horizonte:</b> ${proy.anios} años.
+function saldoCuenta(){
+  const isssteIds=["bono","rcvIssste","sarIssste92","sarFovissste92","solidarioSaldo","avSaldo","compRetiro","largoPlazo","fovissste2008"];
+  const imssIds=["imss97","cyvImss","cuotaImss","infonavit97","infonavit08"];
+  const issste=suma(isssteIds);
+  const imss=document.getElementById("tieneImss").checked?suma(imssIds):0;
+  return {issste, imss, total: issste+imss};
+}
+
+function proyeccion(){
+  const d=datosBase(), sal=saldoCuenta();
+  const sueldo=getNum("sueldo");
+  const rendimiento=Number(document.getElementById("rendimiento").value||0)/100;
+  const inflacion=Number(document.getElementById("inflacion").value||0)/100;
+  const meses=Math.max(0, d.edadRet*12 - yearsBetween(d.nac,new Date())*12);
+  const rMensual=Math.pow(1+rendimiento,1/12)-1;
+  const obligatoria=sueldo*0.113;
+  const solidarioTrab=sueldo*Number(document.getElementById("solidarioPct").value||0);
+  const solidarioDep=solidarioTrab*3.25;
+  const voluntaria=getNum("voluntariaMensual");
+  const aportMensual=obligatoria+solidarioTrab+solidarioDep+voluntaria;
+
+  let saldo=sal.total, aportAcum=0, rendAcum=0;
+  const serie=[{anio:0,saldo,aport:0,rend:0}];
+  for(let m=1;m<=meses;m++){
+    const rend=saldo*rMensual;
+    saldo+=rend+aportMensual;
+    rendAcum+=rend; aportAcum+=aportMensual;
+    if(m%12===0 || m===meses) serie.push({anio:m/12,saldo,aport:aportAcum,rend:rendAcum});
+  }
+  return {saldo, aportMensual, obligatoria, solidarioTrab, solidarioDep, voluntaria, aportAcum, rendAcum, serie, inflacion};
+}
+
+function escenarioPension(){
+  const d=datosBase(), p=proyeccion();
+  const pmg=getNum("pmg");
+  const factor=Number(document.getElementById("factorAseg").value||18.5);
+  const pensionMin=pmg*1.3;
+  const costoMin=pensionMin*12*factor;
+  const saldo=p.saldo;
+  const excedente=Math.max(0, saldo-costoMin);
+
+  const opciones=[
+    {nombre:"Renta máxima estimada", usar:1, retiro:0, pension: saldo/factor/12, tag:"Mayor ingreso mensual"},
+    {nombre:"75% del excedente", usar:.75, retiro:excedente*.25, pension:(costoMin+excedente*.75)/factor/12, tag:"Más pensión, algo de liquidez"},
+    {nombre:"50% del excedente", usar:.50, retiro:excedente*.50, pension:(costoMin+excedente*.50)/factor/12, tag:"Equilibrio"},
+    {nombre:"1.3× pensión garantizada", usar:0, retiro:excedente, pension:pensionMin, tag:"Mayor retiro inmediato"}
+  ];
+
+  return {opciones, excedente, costoMin, pensionMin, factor, saldo};
+}
+
+function retiroProgramado(){
+  const esc=escenarioPension(), d=datosBase();
+  const esperanza=document.getElementById("sexo").value==="mujer"?88:84;
+  const meses=Math.max(120,(esperanza-d.edadRet)*12);
+  const rAnual=Number(document.getElementById("rendimiento").value||0)/100;
+  const r=Math.pow(1+rAnual,1/12)-1;
+  const pago = r>0 ? esc.saldo*(r/(1-Math.pow(1+r,-meses))) : esc.saldo/meses;
+  return {pago, meses, esperanza};
+}
+
+function drawChart(){
+  const c=document.getElementById("graficaAcumulacion"), ctx=c.getContext("2d");
+  const rect=c.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  c.width=rect.width*dpr; c.height=260*dpr; ctx.scale(dpr,dpr);
+  const w=rect.width,h=260,pad=38, serie=proyeccion().serie;
+  ctx.clearRect(0,0,w,h);
+  const maxY=Math.max(...serie.flatMap(x=>[x.saldo,x.aport,x.rend]),1);
+  const maxX=Math.max(...serie.map(x=>x.anio),1);
+  ctx.strokeStyle="#334155"; ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.stroke();
+
+  [["saldo","#22c55e","Saldo total"],["aport","#38bdf8","Aportaciones"],["rend","#f59e0b","Rendimientos"]].forEach(([key,color,label],idx)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=3; ctx.beginPath();
+    serie.forEach((pt,i)=>{
+      const x=pad+(pt.anio/maxX)*(w-pad*2);
+      const y=h-pad-(pt[key]/maxY)*(h-pad*2);
+      if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke(); ctx.fillStyle=color; ctx.fillText(label,pad+8,pad+15+idx*18);
+  });
+  ctx.fillStyle="#9ca3af"; ctx.fillText(money(maxY),pad,18); ctx.fillText("Años",w-pad-26,h-10);
+}
+
+function render(){
+  const d=datosBase(), sal=saldoCuenta(), p=proyeccion(), esc=escenarioPension(), rp=retiroProgramado();
+  document.getElementById("bloqueImss").classList.toggle("hidden",!document.getElementById("tieneImss").checked);
+
+  document.getElementById("resumenDatos").innerHTML=`
+    <b>Edad al retiro:</b> ${d.edadRet} años · <b>Años de servicio al retiro:</b> ${d.servicio} · <b>Hijos con derecho al retiro:</b> ${d.hijos}
   `;
-  drawLineChart("graficaAcumulacion", proy.serie, ["nominal", "real"], ["Saldo nominal", "Saldo real"]);
 
-  const pillbox = document.getElementById("escenarioLegal");
-  pillbox.innerHTML = pension.elegibilidad.map(([txt, warn]) => 
-    `<span class="pill ${warn ? "warn" : ""}">${txt}</span>`
-  ).join("");
-
-  document.getElementById("rvMax").innerHTML = `
-    Renta vitalicia probable:<br>
-    <b>${money(pension.rvMensualMin)} a ${money(pension.rvMensualMax)} mensuales</b><br><br>
-    Seguro de sobrevivencia estimado:<br>
-    <b>${money(pension.costoSeguroMin)} a ${money(pension.costoSeguroMax)}</b><br>
-    Perfil: ${pension.ss.texto}.
+  document.getElementById("resumenSubcuentas").innerHTML=`
+    <b>Total ISSSTE:</b> ${money(sal.issste)}<br>
+    <b>Total IMSS/INFONAVIT capturado:</b> ${money(sal.imss)}<br>
+    <b>Saldo total para proyección:</b> ${money(sal.total)}
   `;
 
-  document.getElementById("pmgEscenario").innerHTML = `
-    Pensión mensual garantizada capturada:<br>
-    <b>${money(pension.pmgMensual)}</b><br><br>
-    Costo estimado para financiarla:<br>
-    <b>${money(pension.costoPmgMin)} a ${money(pension.costoPmgMax)}</b><br><br>
-    Excedente probable:<br>
-    <b>${money(pension.excedenteMin)} a ${money(pension.excedenteMax)}</b>
+  document.getElementById("resumenAcumulacion").innerHTML=`
+    <b>Aportación obligatoria estimada:</b> ${money(p.obligatoria)} mensuales<br>
+    <b>Ahorro solidario trabajador:</b> ${money(p.solidarioTrab)} · <b>Dependencia estimada:</b> ${money(p.solidarioDep)}<br>
+    <b>Voluntarias:</b> ${money(p.voluntaria)}<br>
+    <b>Aportación mensual total:</b> ${money(p.aportMensual)}<br>
+    <b>Saldo proyectado al retiro:</b> ${money(p.saldo)}<br>
+    <b>Aportaciones acumuladas futuras:</b> ${money(p.aportAcum)} · <b>Rendimientos acumulados futuros:</b> ${money(p.rendAcum)}
+  `;
+  drawChart();
+
+  let alerta="Retiro anticipado";
+  if(d.edadRet>=60 && d.edadRet<65) alerta=d.servicio>=25?"Cesantía en edad avanzada":"Posible negativa de pensión ISSSTE por años de servicio insuficientes";
+  if(d.edadRet>=65) alerta=d.servicio>=25?"Vejez":"Posible negativa de pensión ISSSTE por años de servicio insuficientes";
+  document.getElementById("alertaElegibilidad").innerHTML=`<b>Ruta detectada:</b> ${alerta}`;
+
+  document.getElementById("tablaOferta").innerHTML=esc.opciones.map((o,i)=>`
+    <div class="offerCard ${i===0?'highlight':''}">
+      <div class="offerTitle">${o.nombre}</div>
+      <div class="offerValue"><small>Pensión mensual</small><div class="big">${money(o.pension)}</div></div>
+      <div class="offerValue"><small>Monto a retirar</small><div class="big">${o.retiro?money(o.retiro):"—"}</div></div>
+      <div class="offerValue"><small>${o.tag}</small></div>
+    </div>
+  `).join("");
+
+  const anios=Math.max(0, d.edadRet-yearsBetween(d.nac,new Date()));
+  const inflAcum=Math.pow(1+p.inflacion,anios);
+  const maxP=esc.opciones[0].pension;
+  document.getElementById("poderAdquisitivo").innerHTML=`
+    <b>Pensión máxima nominal estimada:</b> ${money(maxP)}<br>
+    <b>Equivalente en poder adquisitivo de hoy:</b> ${money(maxP/inflAcum)}<br>
+    <b>Inflación acumulada estimada al retiro:</b> ${((inflAcum-1)*100).toFixed(1)}%
   `;
 
-  document.getElementById("rpEscenario").innerHTML = `
-    Retiro programado aproximado:<br>
-    <b>${money(pension.rpMensual)} mensuales</b><br><br>
-    Este monto depende de saldo, edad, tablas, rendimiento y actualización anual.
+  document.getElementById("retiroProgramado").innerHTML=`
+    <b>Retiro programado mensual estimado:</b> ${money(rp.pago)}<br>
+    <b>Horizonte usado:</b> ${Math.round(rp.meses/12)} años, hasta edad ${rp.esperanza}. Se recalcula cada año según saldo y rendimientos.
   `;
 
-  const manual = num("excedenteManual");
-  const excedente = manual > 0 ? manual : pension.excedenteMin;
-  if (manual === 0) document.getElementById("excedenteManual").value = Math.round(excedente);
+  const escenarioImss=document.getElementById("escenarioImss");
+  if(document.getElementById("tieneImss").checked){
+    const semanas=Number(document.getElementById("semanasImss").value||0);
+    escenarioImss.classList.remove("hidden");
+    escenarioImss.innerHTML=`
+      <b>Escenario IMSS:</b><br>
+      Recursos IMSS/INFONAVIT capturados: ${money(sal.imss)}.<br>
+      ${semanas>=500 ? "Tiene semanas suficientes para revisar ruta Ley 73 si conserva derechos y cumple requisitos." : "Puede revisarse posible negativa IMSS y retiro de recursos, sujeto a validación."}
+    `;
+  } else escenarioImss.classList.add("hidden");
 
-  const retiro = calcularRetiroExcedente(excedente);
-  const serieInv = serieExcedente(excedente, retiro.retiroMensual);
-  drawLineChart("graficaExcedente", serieInv, ["saldo"], ["Capital invertido"]);
-
-  document.getElementById("resultadoExcedente").innerHTML = `
-    <b>Excedente usado para simulación:</b> ${money(excedente)}<br>
-    <b>Rendimiento bruto anual estimado:</b> ${money(retiro.rendimientoBruto)}<br>
-    <b>ISR estimado anual sobre rendimiento:</b> ${money(retiro.isrAnual)}<br>
-    <b>Retiro mensual sugerido:</b> ${money(retiro.retiroMensual)}<br>
-    <b>Retiro anual sugerido:</b> ${money(retiro.retiroAnual)}
-  `;
-
-  document.getElementById("gestion").innerHTML = `
-    <b>Lectura fiscal-administrativa:</b><br>
-    Si se traduce con las variables capturadas, el rendimiento bruto anual sería ${money(retiro.rendimientoBruto)} 
-    y el ISR estimado sería ${money(retiro.isrAnual)}. El flujo líquido depende de la estrategia de retiro,
-    la constancia fiscal, deducciones personales aplicables y reglas vigentes del año.<br><br>
-    <b>Checklist anual:</b><br>
-    1) Actualizar pensión garantizada, UMA/INPC, rendimiento e ISR.<br>
-    2) Revisar constancias fiscales de intereses/rendimientos.<br>
-    3) Validar deducciones personales disponibles.<br>
-    4) Recalcular retiro mensual para no perder poder adquisitivo.
+  const retiroDeseado=getNum("retiroDeseado");
+  let invertir=getNum("invertirDeseado");
+  if(invertir===0 && esc.excedente>0){
+    invertir=Math.max(0,esc.excedente-retiroDeseado);
+    document.getElementById("invertirDeseado").value=money(invertir).replace("$","");
+  }
+  document.getElementById("decisionExcedente").innerHTML=`
+    <b>Excedente máximo estimado:</b> ${money(esc.excedente)}<br>
+    <b>Retiro elegido:</b> ${money(retiroDeseado)} (${document.getElementById("destinoRetiro").value})<br>
+    <b>Monto a invertir:</b> ${money(invertir)}<br>
+    Este monto será la base del módulo posterior de inversión, inflación e ISR.
   `;
 }
 
-window.addEventListener("load", calcularTodo);
+idsMoney.forEach(id=>{
+  document.addEventListener("input",e=>{ if(e.target.id===id){ render(); }});
+  document.addEventListener("blur",e=>{ if(e.target.id===id){ fmtInput(e.target); render(); }}, true);
+});
+document.addEventListener("input",render);
+document.addEventListener("change",render);
+window.addEventListener("load",()=>{
+  const today=new Date();
+  if(!document.getElementById("retiro").value){
+    const y=today.getFullYear()+6;
+    document.getElementById("retiro").value=`${y}-01-01`;
+  }
+  idsMoney.forEach(id=>{ const el=document.getElementById(id); if(el) fmtInput(el); });
+  render();
+});
